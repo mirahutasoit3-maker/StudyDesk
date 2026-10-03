@@ -161,6 +161,17 @@ function App() {
     );
   };
 
+  // KODE TERINTEGRASI: Fungsi pengarsipan catatan agar sinkron dengan Dashboard UI
+  const toggleArchive = (id) => {
+    persistNotes(
+      notes.map((note) =>
+        note.id === id
+          ? { ...note, archived: !note.archived, updatedAt: new Date().toISOString() }
+          : note
+      )
+    );
+  };
+
   return (
     <div className="app">
       {/* Kirim subPage dan fungsi handleNavigate ke Navbar */}
@@ -199,6 +210,7 @@ function App() {
           onDelete={deleteNote}
           onUpdateProgress={handleUpdateProgress}
           onPin={togglePin}
+          onArchive={toggleArchive} // 
         />
       )}
 
@@ -230,7 +242,7 @@ function App() {
             </div>
             <p>Ruang catatan belajar yang sederhana dan terorganisir.</p>
           </div>
-          <span className="site-footer__note">React · Local Storage Demo</span>
+          <span className="site-footer__note">React · MySQL & Containerized App</span>
         </div>
       </footer>
     </div>
