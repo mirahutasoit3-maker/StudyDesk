@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # Service 1: Database MySQL Relasional
+  db:
+    image: mysql:8.0
+    container_name: studydesk_mysql_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: studydesk_db
+    ports:
+      - "3306:3306"
+    volumes:
+      # Otomatis mengeksekusi tabel init.sql saat database pertama kali menyala
+      - ./database:/docker-entrypoint-initdb.d
+      - mysql_data:/var/lib/mysql
+
+  # Service 2: Express.js Backend API Server
+  backend:
+    build: ./backend
+    container_name: studydesk_backend_api
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - DB_HOST=db
+      - DB_USER=root
+      - DB_PASSWORD=rootpass
+      - DB_NAME=studydesk_db
+      - PORT=3000
+    depends_on:
+      - db
+
+  # Service 3: Frontend React Web App
+  frontend:
+    build: .
+    container_name: studydesk_frontend_app
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  mysql_data:

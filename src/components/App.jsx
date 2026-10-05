@@ -19,26 +19,30 @@ import {
 function App() {
   const [user, setUser] = useState(() => getCurrentUser());
   const [page, setPage] = useState(() => (getCurrentUser() ? 'dashboard' : 'home'));
-  // Tambahkan state baru ini untuk melacak sub-halaman Beranda, Fitur, atau Tentang
   const [subPage, setSubPage] = useState('beranda'); 
   const [notes, setNotes] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
 
+  // PENGAMBILAN CATATAN: Mengambil catatan awal berbasis Async/Await dari MySQL Docker
   useEffect(() => {
-    if (!user) {
-      setNotes([]);
-      return;
+    async function fetchNotes() {
+      if (!user) {
+        setNotes([]);
+        return;
+      }
+      initializeUserNotes(user.id, getInitialData());
+      const dataNotes = await getNotes(user.id);
+      setNotes(dataNotes);
     }
-
-    initializeUserNotes(user.id, getInitialData());
-    setNotes(getNotes(user.id));
+    fetchNotes();
   }, [user]);
 
-  const persistNotes = (nextNotes) => {
+  // SINKRONISASI DATA: Menyelaraskan fungsi penyimpan massal ke sistem REST API Cloud MySQL
+  const persistNotes = async (nextNotes) => {
     setNotes(nextNotes);
     if (user) {
-      saveNotes(user.id, nextNotes);
+      await saveNotes(user.id, nextNotes);
     }
   };
 
@@ -49,12 +53,13 @@ function App() {
     }
 
     setPage(destination);
-    setSubPage(subDestination); // Set target sub-halaman
+    setSubPage(subDestination); 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleRegister = (data) => {
-    const result = registerUser(data);
+  // REGISTER ENGINE: Fungsi pendaftaran akun baru berbasis Async/Await
+  const handleRegister = async (data) => {
+    const result = await registerUser(data);
     if (result.ok) {
       setUser(result.user);
       setPage('dashboard');
@@ -62,8 +67,9 @@ function App() {
     return result;
   };
 
-  const handleLogin = (data) => {
-    const result = loginUser(data);
+  // LOGIN ENGINE: Fungsi masuk akun divalidasi dengan enkripsi Bcrypt di backend
+  const handleLogin = async (data) => {
+    const result = await loginUser(data);
     if (result.ok) {
       setUser(result.user);
       setPage('dashboard');
@@ -90,24 +96,27 @@ function App() {
     setModalOpen(true);
   };
 
-  const saveNote = (data) => {
+  // =========================================================================
+  // LOGIKA UTAMA PERBAIKAN: MODIFIKASI DATA & SINKRONISASI GRAFIK SECARA DINAMIS
+  // =========================================================================
+  const saveNote = async (data) => {
     const now = new Date().toISOString();
 
     if (editingNote) {
-      persistNotes(
-        notes.map((note) =>
-          note.id === editingNote.id
-            ? {
-                ...note,
-                ...data,
-                progress: data.category === 'Tugas' ? (note.progress || 'Rencana Kerja') : null,
-                updatedAt: now
-              }
-            : note
-        )
+      // KODE PERBAIKAN MUTAKHIR: Memastikan 'data.progress' (bukan note.progress) yang dibaca saat catatannya diperbarui
+      const updatedNotes = notes.map((note) =>
+        note.id === editingNote.id
+          ? {
+              ...note,
+              ...data,
+              progress: data.category === 'Tugas' ? (data.progress || 'Rencana Kerja') : null,
+              updatedAt: now
+            }
+          : note
       );
+      await persistNotes(updatedNotes);
     } else {
-      persistNotes([
+      const newNotes = [
         {
           id: createId('note'),
           ...data,
@@ -118,63 +127,61 @@ function App() {
           pinned: false
         },
         ...notes
-      ]);
+      ];
+      await persistNotes(newNotes);
     }
 
     setModalOpen(false);
     setEditingNote(null);
   };
+  // =========================================================================
 
-  const deleteNote = (id) => {
+  const deleteNote = async (id) => {
     const note = notes.find((item) => item.id === id);
     const approved = window.confirm(`Hapus dokumen "${note?.title || 'ini'}"?`);
     if (approved) {
-      persistNotes(notes.filter((item) => item.id !== id));
+      const remainingNotes = notes.filter((item) => item.id !== id);
+      await persistNotes(remainingNotes);
     }
   };
 
-  const handleUpdateProgress = (id, newProgress) => {
-    persistNotes(
-      notes.map((note) =>
-        note.id === id
-          ? {
-              ...note,
-              progress: newProgress,
-              updatedAt: new Date().toISOString()
-            }
-          : note
-      )
+  const handleUpdateProgress = async (id, newProgress) => {
+    const updatedNotes = notes.map((note) =>
+      note.id === id
+        ? {
+            ...note,
+            progress: newProgress,
+            updatedAt: new Date().toISOString()
+          }
+        : note
     );
+    await persistNotes(updatedNotes);
   };
 
-  const togglePin = (id) => {
-    persistNotes(
-      notes.map((note) =>
-        note.id === id
-          ? {
-              ...note,
-              pinned: !note.pinned,
-              updatedAt: new Date().toISOString()
-            }
-          : note
-      )
+  const togglePin = async (id) => {
+    const updatedNotes = notes.map((note) =>
+      note.id === id
+        ? {
+            ...note,
+            pinned: !note.pinned,
+            updatedAt: new Date().toISOString()
+          }
+        : note
     );
+    await persistNotes(updatedNotes);
   };
 
-  // KODE TERINTEGRASI: Fungsi pengarsipan catatan agar sinkron dengan Dashboard UI
-  const toggleArchive = (id) => {
-    persistNotes(
-      notes.map((note) =>
-        note.id === id
-          ? { ...note, archived: !note.archived, updatedAt: new Date().toISOString() }
-          : note
-      )
+  const toggleArchive = async (id) => {
+    const updatedNotes = notes.map((note) =>
+      note.id === id
+        ? { ...note, archived: !note.archived, updatedAt: new Date().toISOString() }
+        : note
     );
+    await persistNotes(updatedNotes);
   };
 
   return (
     <div className="app">
-      {/* Kirim subPage dan fungsi handleNavigate ke Navbar */}
       <Navbar
         user={user}
         subPage={subPage}
@@ -182,7 +189,6 @@ function App() {
         onLogout={handleLogout}
       />
 
-      {/* Kirim subPage aktif ke komponen LandingPage */}
       {page === 'home' && <LandingPage subPage={subPage} onNavigate={handleNavigate} />}
 
       {page === 'login' && !user && (
@@ -210,7 +216,7 @@ function App() {
           onDelete={deleteNote}
           onUpdateProgress={handleUpdateProgress}
           onPin={togglePin}
-          onArchive={toggleArchive} // 
+          onArchive={toggleArchive} 
         />
       )}
 

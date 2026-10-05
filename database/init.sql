@@ -14,11 +14,13 @@ CREATE TABLE IF NOT EXISTS notes (
   user_id VARCHAR(64) NOT NULL,
   title VARCHAR(200) NOT NULL,
   body TEXT NOT NULL,
-  category ENUM('Materi Kuliah','Tugas','Skripsi','Ide','Penting','Pribadi') NOT NULL,
+  category VARCHAR(50) NOT NULL,      -- Diubah ke VARCHAR agar elastis menerima teks kategori
   course_name VARCHAR(150) DEFAULT NULL,
-  progress ENUM('Rencana Kerja','Sedang Dikerjakan','Selesai') DEFAULT NULL,
+  progress VARCHAR(50) DEFAULT NULL,   -- Diubah ke VARCHAR agar elastis menerima status tugas
   pinned BOOLEAN DEFAULT FALSE,
   archived BOOLEAN DEFAULT FALSE,
+  due_date VARCHAR(50) DEFAULT NULL,   -- KODE PERBAIKAN: Kolom wajib penampung Deadline
+  shared_with VARCHAR(150) DEFAULT NULL, -- KODE PERBAIKAN: Kolom wajib penampung Email Teman
   created_at VARCHAR(100) NOT NULL,
   updated_at VARCHAR(100) NOT NULL,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

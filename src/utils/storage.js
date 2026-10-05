@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-// Konfigurasi dasar URL API Backend Express Anda
+// Konfigurasi dasar URL API Backend Express Anda yang berjalan di port 3000
 const API_URL = 'http://localhost:3000/api';
 
 function createId(prefix = 'id') {
@@ -66,34 +66,34 @@ export function logoutUser() {
   localStorage.removeItem('StudyDesk_session_v1');
 }
 
-// 5. Mengambil daftar catatan milik User tertentu dari database MySQL melalui API
+// 5. MENGAMBIL CATATAN: Menarik langsung data catatan riil yang ada di database MySQL via API
 export async function getNotes(userId) {
   try {
     const response = await axios.get(`${API_URL}/notes/${userId}`);
-    return response.data; // Mengembalikan array catatan langsung dari MySQL
+    return response.data; // Mengembalikan array catatan langsung dari kueri SELECT MySQL
   } catch (error) {
-    console.error('Gagal memuat catatan dari database:', error);
+    console.error('Gagal memuat catatan dari database MySQL:', error);
     return [];
   }
 }
 
-// 6. Menyimpan atau memperbarui satu catatan khusus ke database MySQL
-export async function saveNotes(userId, noteData) {
+// 6. MENYIMPAN CATATAN: Mengirim dan mengunci massal array catatan dari React ke database MySQL via API
+export async function saveNotes(userId, nextNotes) {
   try {
     const response = await axios.post(`${API_URL}/notes`, {
-      userId,
-      ...noteData
+      userId: userId,
+      notes: nextNotes
     });
     return response.data;
   } catch (error) {
-    console.error('Gagal menyimpan catatan ke database:', error);
+    console.error('Gagal sinkronisasi catatan ke database MySQL:', error);
     return { ok: false, message: 'Gagal sinkronisasi data ke cloud.' };
   }
 }
 
-// 7. Fungsi placeholder agar tidak memicu eror pemanggilan fungsi lama di komponen lain
+// 7. Mencegah timpaan kueri inisialisasi awal bawaan contoh agar tidak menghapus database MySQL
 export function initializeUserNotes(userId, initialData) {
-  // Sistem database relational tidak lagi membutuhkan inisialisasi lokal mentah.
+  // Database MySQL sudah diatur auto-seeding via init.sql, kueri inisialisasi lokal browser dinonaktifkan total
   return true;
 }
 

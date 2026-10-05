@@ -1,5 +1,9 @@
 import React, { useEffect, useState } from 'react';
 
+// =========================================================
+// DATA KATEGORI
+// =========================================================
+
 const categories = [
   'Materi Kuliah',
   'Tugas',
@@ -9,39 +13,42 @@ const categories = [
   'Pribadi'
 ];
 
+// =========================================================
+// DATA PROGRESS TUGAS
+// =========================================================
+
 const progressOptions = [
   'Rencana Kerja',
   'Sedang Dikerjakan',
   'Selesai'
 ];
 
+// =========================================================
+// COMPONENT NOTE MODAL
+// =========================================================
+
 function NoteModal({ note, onSave, onClose }) {
   const editing = Boolean(note);
+
+  // =======================================================
+  // STATE FORM
+  // =======================================================
 
   const [form, setForm] = useState({
     title: '',
     body: '',
     category: 'Materi Kuliah',
     progress: 'Rencana Kerja',
-    courseName: ''
+    courseName: '',
+    dueDate: '',
+    sharedWith: ''
   });
 
   const [error, setError] = useState('');
 
-  // =========================================================
-  // TANGGAL
-  // =========================================================
-
-  const currentDate = new Date().toLocaleDateString('id-ID', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-
-  // =========================================================
+  // =======================================================
   // MENGISI FORM SAAT EDIT
-  // =========================================================
+  // =======================================================
 
   useEffect(() => {
     if (note) {
@@ -50,7 +57,9 @@ function NoteModal({ note, onSave, onClose }) {
         body: note.body || '',
         category: note.category || 'Materi Kuliah',
         progress: note.progress || 'Rencana Kerja',
-        courseName: note.courseName || ''
+        courseName: note.courseName || '',
+        dueDate: note.dueDate || '',
+        sharedWith: note.sharedWith || ''
       });
     } else {
       setForm({
@@ -58,16 +67,18 @@ function NoteModal({ note, onSave, onClose }) {
         body: '',
         category: 'Materi Kuliah',
         progress: 'Rencana Kerja',
-        courseName: ''
+        courseName: '',
+        dueDate: '',
+        sharedWith: ''
       });
     }
 
     setError('');
   }, [note]);
 
-  // =========================================================
+  // =======================================================
   // HANDLE PERUBAHAN INPUT
-  // =========================================================
+  // =======================================================
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -85,6 +96,7 @@ function NoteModal({ note, onSave, onClose }) {
             previous.progress || 'Rencana Kerja';
         } else {
           updated.progress = null;
+          updated.dueDate = '';
         }
       }
 
@@ -94,18 +106,23 @@ function NoteModal({ note, onSave, onClose }) {
     setError('');
   };
 
-  // =========================================================
+  // =======================================================
   // SUBMIT FORM
-  // =========================================================
+  // =======================================================
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
+    // Membersihkan input
     const cleanTitle = form.title.trim();
     const cleanBody = form.body.trim();
     const cleanCourseName = form.courseName.trim();
+    const cleanSharedWith = form.sharedWith.trim().toLowerCase();
 
-    // Validasi judul
+    // -------------------------------------------------------
+    // VALIDASI JUDUL
+    // -------------------------------------------------------
+
     if (cleanTitle.length < 3) {
       setError(
         'Judul minimal wajib terdiri dari 3 karakter.'
@@ -113,7 +130,10 @@ function NoteModal({ note, onSave, onClose }) {
       return;
     }
 
-    // Validasi isi
+    // -------------------------------------------------------
+    // VALIDASI ISI
+    // -------------------------------------------------------
+
     if (cleanBody.length < 10) {
       setError(
         'Substansi isi dokumen minimal wajib terdiri dari 10 karakter.'
@@ -121,7 +141,10 @@ function NoteModal({ note, onSave, onClose }) {
       return;
     }
 
-    // Validasi mata kuliah
+    // -------------------------------------------------------
+    // VALIDASI MATA KULIAH
+    // -------------------------------------------------------
+
     if (
       form.category === 'Materi Kuliah' &&
       cleanCourseName.length === 0
@@ -130,36 +153,62 @@ function NoteModal({ note, onSave, onClose }) {
       return;
     }
 
+    // -------------------------------------------------------
+    // VALIDASI DEADLINE TUGAS
+    // -------------------------------------------------------
+
+    if (form.category === 'Tugas' && !form.dueDate) {
+      setError(
+        'Tanggal tenggat waktu (deadline) wajib ditentukan.'
+      );
+      return;
+    }
+
+    // =======================================================
+    // MEMBUAT DATA YANG AKAN DISIMPAN
+    // =======================================================
+
     const payload = {
       ...form,
       title: cleanTitle,
       body: cleanBody,
-      courseName: cleanCourseName
+      courseName: cleanCourseName,
+      sharedWith: cleanSharedWith || null
     };
 
-    // Judul otomatis untuk materi kuliah
+    // -------------------------------------------------------
+    // JUDUL OTOMATIS UNTUK MATERI KULIAH
+    // -------------------------------------------------------
+
     if (
       form.category === 'Materi Kuliah' &&
       cleanCourseName.length > 0
     ) {
-      payload.title =
-        '[' + cleanCourseName + '] ' + cleanTitle;
+      payload.title = `[${cleanCourseName}] ${cleanTitle}`;
     }
 
-    // Progress hanya digunakan untuk Tugas
+    // -------------------------------------------------------
+    // PROGRESS HANYA DIGUNAKAN UNTUK TUGAS
+    // -------------------------------------------------------
+
     if (form.category !== 'Tugas') {
       payload.progress = null;
+      payload.dueDate = '';
     } else {
       payload.progress =
         form.progress || 'Rencana Kerja';
     }
 
+    // -------------------------------------------------------
+    // KIRIM DATA KE COMPONENT PARENT
+    // -------------------------------------------------------
+
     onSave(payload);
   };
 
-  // =========================================================
+  // =======================================================
   // TEMA BERDASARKAN KATEGORI
-  // =========================================================
+  // =======================================================
 
   const getEditorTheme = () => {
     switch (form.category) {
@@ -191,6 +240,20 @@ function NoteModal({ note, onSave, onClose }) {
           accent: '#8e44ad'
         };
 
+      case 'Skripsi':
+        return {
+          bg: '#f5f5ff',
+          border: '#d6d6f5',
+          accent: '#5b5bb5'
+        };
+
+      case 'Tugas':
+        return {
+          bg: '#f8fbff',
+          border: '#c9dff5',
+          accent: '#155ec9'
+        };
+
       default:
         return {
           bg: '#ffffff',
@@ -202,9 +265,9 @@ function NoteModal({ note, onSave, onClose }) {
 
   const theme = getEditorTheme();
 
-  // =========================================================
-  // RENDER
-  // =========================================================
+  // =======================================================
+  // TAMPILAN MODAL
+  // =======================================================
 
   return (
     <div
@@ -213,7 +276,10 @@ function NoteModal({ note, onSave, onClose }) {
       aria-modal="true"
       aria-labelledby="note-modal-title"
     >
-      {/* BACKDROP */}
+      {/* =================================================
+          BACKDROP
+      ================================================= */}
+
       <button
         className="modal__backdrop"
         type="button"
@@ -221,7 +287,10 @@ function NoteModal({ note, onSave, onClose }) {
         onClick={onClose}
       />
 
-      {/* MODAL CARD */}
+      {/* =================================================
+          MODAL CARD
+      ================================================= */}
+
       <div
         className="modal__card"
         style={{
@@ -231,19 +300,26 @@ function NoteModal({ note, onSave, onClose }) {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: theme.bg,
-          transition: 'background-color 0.3s ease'
+          transition: 'background-color 0.3s ease',
+          padding: '24px',
+          width: '100%',
+          maxWidth: '540px',
+          boxSizing: 'border-box'
         }}
       >
         {/* =================================================
             HEADER
-        ================================================== */}
+        ================================================= */}
 
         <div
           className="modal__heading"
           style={{
             flexShrink: 0,
-            borderBottom: '1px dashed ' + theme.border,
-            paddingBottom: '15px'
+            borderBottom: `1px dashed ${theme.border}`,
+            paddingBottom: '15px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start'
           }}
         >
           <div>
@@ -265,25 +341,40 @@ function NoteModal({ note, onSave, onClose }) {
             </h2>
           </div>
 
+          {/* TOMBOL CLOSE */}
+
           <button
             className="icon-button"
             type="button"
             onClick={onClose}
             aria-label="Tutup"
+            style={{
+              fontSize: '24px',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer'
+            }}
           >
             ×
           </button>
         </div>
 
         {/* =================================================
-            ERROR
-        ================================================== */}
+            ERROR MESSAGE
+        ================================================= */}
 
         {error && (
           <div
             className="form-alert form-alert--error"
             style={{
-              flexShrink: 0
+              flexShrink: 0,
+              background: '#fff5f5',
+              color: '#e74c3c',
+              padding: '10px',
+              borderRadius: '8px',
+              marginTop: '15px',
+              border: '1px solid #fadbd8',
+              fontSize: '14px'
             }}
           >
             {error}
@@ -292,23 +383,33 @@ function NoteModal({ note, onSave, onClose }) {
 
         {/* =================================================
             FORM
-        ================================================== */}
+        ================================================= */}
 
         <form
           className="note-form"
           onSubmit={handleSubmit}
           style={{
             overflowY: 'auto',
-            padding: '20px 8px 20px 0',
+            padding: '15px 0',
             flex: 1,
-            minHeight: 0
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
           }}
         >
           {/* =================================================
               KATEGORI
-          ================================================== */}
+          ================================================= */}
 
-          <label>
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              fontWeight: '500'
+            }}
+          >
             Klasifikasi Kategori
 
             <select
@@ -316,7 +417,11 @@ function NoteModal({ note, onSave, onClose }) {
               value={form.category}
               onChange={handleChange}
               style={{
-                border: '1px solid ' + theme.border
+                border: `1px solid ${theme.border}`,
+                padding: '10px',
+                borderRadius: '8px',
+                width: '100%',
+                background: '#fff'
               }}
             >
               {categories.map((category) => (
@@ -332,269 +437,62 @@ function NoteModal({ note, onSave, onClose }) {
 
           {/* =================================================
               MATERI KULIAH
-          ================================================== */}
+          ================================================= */}
 
           {form.category === 'Materi Kuliah' && (
-            <div
+            <label
               style={{
-                background: '#fefcf0',
-                border: '2px dashed #e6dbb3',
-                borderRadius: '16px',
-                padding: '20px',
-                marginBottom: '20px',
-                position: 'relative',
-                boxShadow:
-                  'inset 0 0 10px rgba(0,0,0,0.02)'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontWeight: '500'
               }}
             >
-              {/* Jepitan */}
-              <div
+              Nama Mata Kuliah
+
+              <input
+                type="text"
+                name="courseName"
+                value={form.courseName}
+                onChange={handleChange}
+                placeholder="Contoh: Pemrograman Web, DevOps..."
                 style={{
-                  display: 'flex',
-                  gap: '25px',
-                  position: 'absolute',
-                  top: '-10px',
-                  left: '20px'
+                  border: `1px solid ${theme.border}`,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  width: '100%',
+                  boxSizing: 'border-box'
                 }}
-              >
-                {Array.from({ length: 5 }).map(
-                  (_, index) => (
-                    <div
-                      key={index}
-                      style={{
-                        width: '12px',
-                        height: '16px',
-                        background: '#bdc3c7',
-                        borderRadius: '6px',
-                        border: '2px solid #fff'
-                      }}
-                    />
-                  )
-                )}
-              </div>
-
-              {/* Header lembar kuliah */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '12px',
-                  color: '#8e8d86',
-                  marginBottom: '15px',
-                  fontWeight: 'bold',
-                  borderBottom:
-                    '1px solid #ebdcb2',
-                  paddingBottom: '6px',
-                  marginTop: '5px'
-                }}
-              >
-                <span>
-                  📅 {currentDate}
-                </span>
-
-                <span>
-                  📑 Lembar Kuliah
-                </span>
-              </div>
-
-              {/* Mata kuliah */}
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '12px',
-                  marginBottom: '10px'
-                }}
-              >
-                <div
-                  style={{
-                    flex: 1
-                  }}
-                >
-                  <span
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      color: '#615f57',
-                      display: 'block',
-                      marginBottom: '4px'
-                    }}
-                  >
-                    Mata Kuliah
-                  </span>
-
-                  <input
-                    type="text"
-                    name="courseName"
-                    value={form.courseName}
-                    onChange={handleChange}
-                    placeholder="Misal: Pemrograman Web, Kalkulus..."
-                    style={{
-                      background: '#fff',
-                      border:
-                        '1px solid #ebdcb2',
-                      borderRadius: '8px',
-                      padding: '8px 12px',
-                      fontSize: '13px',
-                      width: '100%',
-                      boxSizing: 'border-box'
-                    }}
-                    required={
-                      form.category ===
-                      'Materi Kuliah'
-                    }
-                  />
-                </div>
-              </div>
-            </div>
+              />
+            </label>
           )}
 
           {/* =================================================
-              IDE
-          ================================================== */}
-
-          {form.category === 'Ide' && (
-            <div
-              style={{
-                background: '#eef7ff',
-                border: '2px solid #cbdcf7',
-                borderRadius: '16px',
-                padding: '15px',
-                marginBottom: '20px'
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#2980b9',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>
-                  💡 Halaman Brainstorming Gagasan
-                  Kreatif
-                </span>
-              </div>
-
-              <p
-                style={{
-                  margin: '5px 0 0',
-                  fontSize: '11px',
-                  color: '#7f8c8d'
-                }}
-              >
-                Gunakan lembar kotak blueprint di
-                bawah ini untuk mencatat ide liar
-                Anda.
-              </p>
-            </div>
-          )}
-
-          {/* =================================================
-              PENTING
-          ================================================== */}
-
-          {form.category === 'Penting' && (
-            <div
-              style={{
-                background: '#fff0f0',
-                border: '2px solid #f5b7b1',
-                borderRadius: '16px',
-                padding: '15px',
-                marginBottom: '20px'
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#c0392b',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>
-                  📌 DOKUMEN SKALA PRIORITAS UTAMA
-                </span>
-              </div>
-
-              <p
-                style={{
-                  margin: '5px 0 0',
-                  fontSize: '11px',
-                  color: '#c0392b',
-                  opacity: 0.8
-                }}
-              >
-                Pastikan pengumuman atau deadline
-                mendesak dicatat secara presisi.
-              </p>
-            </div>
-          )}
-
-          {/* =================================================
-              PRIBADI
-          ================================================== */}
-
-          {form.category === 'Pribadi' && (
-            <div
-              style={{
-                background: '#fdf2ff',
-                border: '2px dashed #e8daf0',
-                borderRadius: '16px',
-                padding: '15px',
-                marginBottom: '20px'
-              }}
-            >
-              <div
-                style={{
-                  fontSize: '12px',
-                  color: '#8e44ad',
-                  fontWeight: 'bold',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px'
-                }}
-              >
-                <span>
-                  🔒 Lembar Catatan Privasi Internal
-                </span>
-              </div>
-
-              <p
-                style={{
-                  margin: '5px 0 0',
-                  fontSize: '11px',
-                  color: '#9b59b6'
-                }}
-              >
-                Hanya ditujukan untuk keperluan
-                dokumentasi pribadi Anda.
-              </p>
-            </div>
-          )}
-
-          {/* =================================================
-              STATUS TUGAS
-          ================================================== */}
+              PROGRESS TUGAS
+          ================================================= */}
 
           {form.category === 'Tugas' && (
             <label
               style={{
-                animation: 'fadeIn 0.2s ease'
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontWeight: '500'
               }}
             >
-              Status Alur Kerja Progres
+              Status Progres Tugas
 
               <select
                 name="progress"
-                value={
-                  form.progress || 'Rencana Kerja'
-                }
+                value={form.progress || 'Rencana Kerja'}
                 onChange={handleChange}
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  width: '100%',
+                  background: '#fff'
+                }}
               >
                 {progressOptions.map((option) => (
                   <option
@@ -609,141 +507,188 @@ function NoteModal({ note, onSave, onClose }) {
           )}
 
           {/* =================================================
-              JUDUL
-          ================================================== */}
+              DEADLINE TUGAS
+          ================================================= */}
 
-          <label>
-            Judul Dokumen / Topik Bahasan
+          {form.category === 'Tugas' && (
+            <label
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                fontWeight: '500'
+              }}
+            >
+              Tanggal Tenggat Waktu (Deadline)
+
+              <input
+                type="date"
+                name="dueDate"
+                value={form.dueDate}
+                onChange={handleChange}
+                style={{
+                  border: `1px solid ${theme.border}`,
+                  padding: '10px',
+                  borderRadius: '8px',
+                  width: '100%',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </label>
+          )}
+
+          {/* =================================================
+              JUDUL CATATAN
+          ================================================= */}
+
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              fontWeight: '500'
+            }}
+          >
+            Judul Catatan
 
             <input
               type="text"
               name="title"
               value={form.title}
               onChange={handleChange}
-              placeholder="Ketik judul bahasan utama dokumen..."
-              maxLength={60}
-              required
+              placeholder="Masukkan tajuk utama berkas..."
               style={{
-                border:
-                  '1px solid ' + theme.border
+                border: `1px solid ${theme.border}`,
+                padding: '10px',
+                borderRadius: '8px',
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             />
-
-            <small
-              style={{
-                textAlign: 'right',
-                display: 'block'
-              }}
-            >
-              Sisa kuota batas:{' '}
-              {60 - form.title.length} karakter
-            </small>
           </label>
 
           {/* =================================================
-              ISI CATATAN
-          ================================================== */}
+              ISI DOKUMEN
+          ================================================= */}
 
-          <label>
-            Substansi Konten Catatan
-
-            <div
-              style={{
-                position: 'relative'
-              }}
-            >
-              <textarea
-                name="body"
-                value={form.body}
-                onChange={handleChange}
-                placeholder="Tuangkan rincian tulisan secara lengkap di sini..."
-                rows={9}
-                required
-                style={{
-                  backgroundColor: theme.bg,
-
-                  backgroundImage:
-                    form.category ===
-                    'Materi Kuliah'
-                      ? 'linear-gradient(#e6dbb3 1px, transparent 1px)'
-                      : form.category === 'Ide'
-                        ? 'linear-gradient(90deg, rgba(41,128,185,0.03) 1px, transparent 1px), linear-gradient(rgba(41,128,185,0.03) 1px, transparent 1px)'
-                        : 'none',
-
-                  backgroundSize:
-                    form.category === 'Ide'
-                      ? '20px 20px'
-                      : '100% 32px',
-
-                  lineHeight: '32px',
-                  padding: '12px 16px',
-
-                  border:
-                    '1px solid ' + theme.border,
-
-                  borderRadius: '12px',
-                  fontFamily: 'inherit',
-                  transition:
-                    'all 0.3s ease',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                  resize: 'vertical'
-                }}
-              />
-            </div>
-          </label>
-
-          {/* =================================================
-              TOMBOL AKSI
-          ================================================== */}
-
-          <div
-            className="modal__actions"
+          <label
             style={{
-              position: 'sticky',
-              bottom: 0,
-
-              // TIDAK menggunakan ${theme.border}
-              background: theme.bg,
-
-              paddingTop: '15px',
-              paddingBottom: '5px',
-              marginTop: '20px',
-
-              // Dibuat menggunakan + agar tidak ada
-              // template literal yang dapat menyebabkan
-              // error parser
-              borderTop:
-                '1px solid ' + theme.border,
-
-              zIndex: 10,
-              transition:
-                'background-color 0.3s ease',
-
               display: 'flex',
-              justifyContent: 'flex-end',
-              gap: '10px'
+              flexDirection: 'column',
+              gap: '6px',
+              fontWeight: '500',
+              flex: 1
             }}
           >
+            Substansi Isi Dokumen
+
+            <textarea
+              name="body"
+              value={form.body}
+              onChange={handleChange}
+              placeholder="Ketik isi rangkuman, teks, atau detail materi kuliah Anda di sini..."
+              style={{
+                border: `1px solid ${theme.border}`,
+                padding: '10px',
+                borderRadius: '8px',
+                flex: 1,
+                minHeight: '120px',
+                resize: 'vertical',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
+          </label>
+
+          {/* =================================================
+              SHARING / KOLABORASI
+          ================================================= */}
+
+          <label
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              fontWeight: '500',
+              borderTop: `1px dashed ${theme.border}`,
+              paddingTop: '15px'
+            }}
+          >
+            Bagikan ke Rekan Mahasiswa
+            <span
+              style={{
+                fontSize: '12px',
+                fontWeight: '400',
+                color: '#777'
+              }}
+            >
+              Masukkan email rekan mahasiswa - Opsional
+            </span>
+
+            <input
+              type="email"
+              name="sharedWith"
+              value={form.sharedWith}
+              onChange={handleChange}
+              placeholder="contoh: ryan@email.com"
+              style={{
+                border: `1px solid ${theme.border}`,
+                padding: '10px',
+                borderRadius: '8px',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
+          </label>
+
+          {/* =================================================
+              ACTION BUTTONS
+          ================================================= */}
+
+          <div
+            style={{
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+              marginTop: '10px',
+              flexShrink: 0,
+              paddingTop: '5px'
+            }}
+          >
+            {/* TOMBOL BATAL */}
+
             <button
               className="button button--secondary"
               type="button"
               onClick={onClose}
+              style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                border: '1px solid #ccc',
+                background: '#fff'
+              }}
             >
-              Batalkan
+              Batal
             </button>
+
+            {/* TOMBOL SIMPAN */}
 
             <button
               className="button button--primary"
               type="submit"
               style={{
+                padding: '10px 20px',
+                borderRadius: '8px',
+                cursor: 'pointer',
                 backgroundColor: theme.accent,
-                borderColor: theme.accent
+                color: '#fff',
+                border: 'none'
               }}
             >
               {editing
-                ? 'Terapkan Perubahan'
-                : 'Sematkan Dokumen'}
+                ? 'Simpan Perubahan'
+                : 'Amankan Dokumen'}
             </button>
           </div>
         </form>
@@ -751,5 +696,9 @@ function NoteModal({ note, onSave, onClose }) {
     </div>
   );
 }
+
+// =========================================================
+// EXPORT COMPONENT
+// =========================================================
 
 export default NoteModal;

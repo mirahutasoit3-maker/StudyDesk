@@ -12,26 +12,45 @@ function Dashboard({
   onArchive,
   onPin
 }) {
+  // =========================================================================
+  // STATE FILTER & SEARCH (FITUR 2)
+  // =========================================================================
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('Aktif');
   const [category, setCategory] = useState('Semua');
 
+  // Perhitungan Ringkasan Statistik Dasar Bawaan
   const activeCount = notes.filter((note) => !note.archived).length;
   const archivedCount = notes.filter((note) => note.archived).length;
   const pinnedCount = notes.filter((note) => note.pinned && !note.archived).length;
 
+  // =========================================================================
+  // INTEGRASI FITUR 1: LOGIKA STATISTIK & GRAFIK PROGRES TUGAS
+  // =========================================================================
+  const totalTugas = notes.filter(n => n.category === 'Tugas').length;
+  const tugasSelesai = notes.filter(n => n.category === 'Tugas' && n.progress === 'Selesai').length;
+  const persentaseSelesai = totalTugas > 0 ? Math.round((tugasSelesai / totalTugas) * 100) : 0;
+  // =========================================================================
+
+  // =========================================================================
+  // INTEGRASI FITUR 2 & FITUR 4: LOGIKA FILTER PENCARIAN MASAL DAN AKSES EMAIL
+  // =========================================================================
   const visibleNotes = useMemo(() => {
     const keyword = query.trim().toLowerCase();
 
     return notes
       .filter((note) => {
+        // Filter Berdasarkan Status Menu (Aktif / Arsip / Semua)
         const sameStatus =
           status === 'Semua' ||
           (status === 'Aktif' && !note.archived) ||
           (status === 'Arsip' && note.archived);
 
+        // Filter Berdasarkan Pilihan Dropdown Kategori
         const sameCategory = category === 'Semua' || note.category === category;
-        const content = `${note.title} ${note.body} ${note.category}`.toLowerCase();
+        
+        // Fitur Pencarian Pintar (Mencari pada Judul, Isi, Kategori, Mata Kuliah, dan Tag Email Kolaborasi)
+        const content = `${note.title} ${note.body} ${note.category} ${note.courseName || ''} ${note.sharedWith || ''}`.toLowerCase();
 
         return sameStatus && sameCategory && content.includes(keyword);
       })
@@ -40,6 +59,7 @@ function Dashboard({
         return new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt);
       });
   }, [notes, query, status, category]);
+  // =========================================================================
 
   return (
     <main className="dashboard">
@@ -61,6 +81,23 @@ function Dashboard({
 
       <section className="dashboard-content">
         <div className="container">
+          
+          {/* =========================================================================
+              VISUAL FITUR 1: GRAFIK BAR PROGRES PENYELESAIAN TUGAS
+             ========================================================================= */}
+          {totalTugas > 0 && (
+            <div className="analytics-progress-bar" style={{ background: '#fff', padding: '20px', borderRadius: '8px', marginBottom: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', border: '1px solid #edf2f7' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '14px', fontWeight: '600', color: '#4a5568' }}>📊 Progres Penyelesaian Tugas Kuliah</span>
+                <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#38a169' }}>{tugasSelesai} dari {totalTugas} Selesai ({persentaseSelesai}%)</span>
+              </div>
+              <div style={{ width: '100%', background: '#edf2f7', borderRadius: '10px', height: '12px', overflow: 'hidden' }}>
+                <div style={{ width: `${persentaseSelesai}%`, background: '#38a169', height: '100%', transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)' }}></div>
+              </div>
+            </div>
+          )}
+          {/* ========================================================================= */}
+
           <div className="summary-grid">
             <div className="summary-card">
               <span>Total Catatan</span>
@@ -93,6 +130,9 @@ function Dashboard({
               <span className="result-count">{visibleNotes.length} ditemukan</span>
             </div>
 
+            {/* =========================================================================
+                VISUAL FITUR 2: FILTER BAR DENGAN DROPDOWN MULTI-KATEGORI
+               ========================================================================= */}
             <div className="filter-bar">
               <div className="search-control">
                 <span>⌕</span>
@@ -100,7 +140,7 @@ function Dashboard({
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Telusuri judul, substansi, atau label..."
+                  placeholder="Telusuri judul, substansi, label, atau email tim..."
                 />
               </div>
 
@@ -116,6 +156,7 @@ function Dashboard({
                 ))}
               </select>
             </div>
+            {/* ========================================================================= */}
 
             {visibleNotes.length === 0 ? (
               <div className="empty-state">
